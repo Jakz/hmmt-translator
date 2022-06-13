@@ -11,7 +11,7 @@ public class Offset
   
   public String toString() { return String.format("%06x", value); }
   
-  public Offset shift(int amount) { return new Offset(value + amount); }
+  public Offset shift(long amount) { return new Offset(value + amount); }
   
   public long value() { return value; }
   public long adjusted() { return value + 0x08000000; }

@@ -38,6 +38,29 @@ public class App
   public static List<Text> strings;
   
   
+  public static String allowed = " .-,?'!():/\r\n";
+  public static String escapeString(String text)
+  {
+    for (int i = 0; i < text.length(); ++i)
+    {
+      char c = text.charAt(i);
+      
+      if (c >= 'a' && c <= 'z')
+        continue;
+      else if (c >= 'A' && c <= 'Z')
+        continue;
+      else if (c >= '0' && c <= '9')
+        continue;
+      else if (allowed.indexOf(c) != -1)
+        continue;
+      else
+        ;//System.out.println("Unknown char: "+(int)c+" "+c+"   "+text);
+    }
+    
+    
+    return text.replaceAll("\\r\\n", "<0x0d0a>");
+  }
+  
   public static void loadItems(Offset base, int count, int stride, int inBlockShift)
   {
     Offset[] itemNames = rom.readPointers(base, count, stride);
@@ -57,10 +80,40 @@ public class App
     }
   }
   
-  public static String escapeString(String text)
+  public static void loadScatteredBlocks()
   {
-    return text.replaceAll("\\r\\n", "<0x0d0a>");
+    final byte[] MAGIC = new byte[] {'S', 'T', 'R', ' '};
+    boolean first = true;
+    
+    for (int i = 0; i < rom.length(); ++i)
+    {
+      if (rom.matches(MAGIC, i))
+      {
+        if (first)
+        {
+          first = false;
+          continue;
+        }
+        
+        long count = rom.readU32(new Offset(i + 8));
+        
+        log("Found STR block at %08x (%d entries)", i, count);
+        
+        Offset tableBase = new Offset(i + 12);
+        Offset textBase = tableBase.shift(4 * count);
+        
+        for (int j = 0; j < count; ++j)
+        {
+          long textOffset = rom.readU32(tableBase.shift(4 * j));
+          log("  %s", textOffset);
+          
+          String text = rom.readNullTerminatedString(textBase.shift(textOffset));
+          strings.add(new Text(tableBase.shift(4 * j), escapeString(text)));
+        }
+      }
+    }
   }
+
   
   public static void main(String[] args)
   {
@@ -72,6 +125,8 @@ public class App
       loadItems(new Offset(0x000eab0c), 81, 12, 8);
       loadItems(new Offset(0x000edcd8), 171, 16, 12);
       loadItems(new Offset(0x000efed4), 95, 12, 8);
+      
+      loadScatteredBlocks();
 
       StringsTable table = new StringsTable();
       var panel = UIUtils.buildFillPanel(table, new Size.Int(1024, 768));

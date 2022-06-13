@@ -3,6 +3,7 @@ package com.jakz.hm;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 
 public class Rom
 {
@@ -21,13 +22,30 @@ public class Rom
     App.log("Loaded rom into %d buffer", data.length);
   }
   
-  Offset readPointer(Offset offset)
+  int length()
+  {
+    return data.length;
+  }
+  
+  boolean matches(byte[] values, int offset)
+  {
+    if (offset + values.length >= data.length)
+      return false;
+    
+    return Arrays.compare(values, 0, values.length, data, offset, offset + values.length) == 0;
+  }
+  
+  long readU32(Offset offset)
   {
     int o = (int)offset.value();
-    
     long value = (data[o] & 0xFF) | ((data[o + 1] & 0xFF) << 8) | ((data[o + 2] & 0xFF) << 16) | ((data[o + 3] & 0xFF) << 24);
-    
-    return new Offset(value);
+
+    return value;
+  }
+  
+  Offset readPointer(Offset offset)
+  {
+    return new Offset(readU32(offset));
   }
   
   Offset[] readPointers(Offset offset, int count, int stride)
