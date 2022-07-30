@@ -15,4 +15,7 @@ public class Offset
   
   public long value() { return value; }
   public long adjusted() { return value + 0x08000000; }
+  
+  public int hashCode() { return Long.hashCode(value); }
+  public boolean equals(Object other) { return other instanceof Offset && ((Offset)other).value == value; }
 }

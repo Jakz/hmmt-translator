@@ -5,7 +5,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.jakz.hm.ui.StringsTable;
 import com.pixbits.lib.lang.Size;
@@ -36,11 +38,15 @@ public class App
   public static void log(String format, Object... args) { System.out.println(String.format(format, args) + "\n"); }
   
   public static List<Text> strings;
+  public static Map<Offset, Text> mapping;
+  public static Map<Offset, Offset> aliases;
   
   
-  public static String allowed = " .-,?'!():/\r\n";
+  public static String allowed = " .-,?'!():/<>";
   public static String escapeString(String text)
   {
+    text = text.replaceAll("\\r\\n", "<endl>");
+
     for (int i = 0; i < text.length(); ++i)
     {
       char c = text.charAt(i);
@@ -54,11 +60,33 @@ public class App
       else if (allowed.indexOf(c) != -1)
         continue;
       else
-        ;//System.out.println("Unknown char: "+(int)c+" "+c+"   "+text);
+        System.out.println("Unknown char: "+(int)c+" "+c+" "+Integer.toHexString(c));
     }
     
     
-    return text.replaceAll("\\r\\n", "<0x0d0a>");
+    return text;
+  }
+  
+  
+  public static void add(Offset pointer, Offset textOffset, String string)
+  {
+    if (textOffset != null)
+    {
+      Text text = mapping.get(textOffset);
+      
+      if (text != null)
+      {
+        /* text already mapped */
+        aliases.put(pointer, text.offset);
+        return;
+      }
+      else
+      {
+        /* otherwise map it */
+        mapping.put(textOffset, text);
+        strings.add(new Text(pointer, escapeString(string)));
+      }        
+    } 
   }
   
   public static void loadItems(Offset base, int count, int stride, int inBlockShift)
@@ -68,7 +96,7 @@ public class App
     for (Offset io : itemNames)
     {
       String text = rom.readNullTerminatedString(io);
-      strings.add(new Text(null, escapeString(text)));
+      add(null, io, text);
     }
     
     Offset[] itemDescs = rom.readPointers(base.shift(inBlockShift), count, stride);
@@ -76,7 +104,7 @@ public class App
     for (Offset io : itemDescs)
     {
       String text = rom.readNullTerminatedString(io);
-      strings.add(new Text(null, escapeString(text)));
+      add(null, io, text);
     }
   }
   
@@ -105,10 +133,9 @@ public class App
         for (int j = 0; j < count; ++j)
         {
           long textOffset = rom.readU32(tableBase.shift(4 * j));
-          log("  %s", textOffset);
-          
+
           String text = rom.readNullTerminatedString(textBase.shift(textOffset));
-          strings.add(new Text(tableBase.shift(4 * j), escapeString(text)));
+          add(tableBase.shift(4 * j), textBase.shift(textOffset), text);
         }
       }
     }
@@ -120,13 +147,18 @@ public class App
     try
     {
       rom = new Rom("T:\\hmft\\hmft\\trm-hmmt.gba");
+      
       strings = new ArrayList<>();
+      mapping = new HashMap<>();
+      aliases = new HashMap<>();
 
       loadItems(new Offset(0x000eab0c), 81, 12, 8);
       loadItems(new Offset(0x000edcd8), 171, 16, 12);
       loadItems(new Offset(0x000efed4), 95, 12, 8);
       
       loadScatteredBlocks();
+      
+      log("Loaded %d strings, %d duplicates", strings.size(), aliases.size());
 
       StringsTable table = new StringsTable();
       var panel = UIUtils.buildFillPanel(table, new Size.Int(1024, 768));
