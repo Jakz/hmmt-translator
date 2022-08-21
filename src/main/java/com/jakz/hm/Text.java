@@ -2,12 +2,12 @@ package com.jakz.hm;
 
 public class Text
 {
-  public Offset offset;
+  public TextReference reference;
   public String text;
   
-  public Text(Offset offset, String text)
+  public Text(TextReference reference, String text)
   {
-    this.offset = offset;
+    this.reference = reference;
     this.text = text;
   }
 }

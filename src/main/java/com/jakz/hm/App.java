@@ -39,7 +39,7 @@ public class App
   
   public static List<Text> strings;
   public static Map<Offset, Text> mapping;
-  public static Map<Offset, Offset> aliases;
+  public static Map<Offset, TextReference> aliases;
   
   
   public static String allowed = " .-,?'!():/<>";
@@ -67,45 +67,23 @@ public class App
     return text;
   }
   
-  
-  public static void add(Offset pointer, Offset textOffset, String string)
+  public static void add(TextReference reference)
   {
-    if (textOffset != null)
-    {
-      Text text = mapping.get(textOffset);
-      
-      if (text != null)
-      {
-        /* text already mapped */
-        aliases.put(pointer, text.offset);
-        return;
-      }
-      else
-      {
-        /* otherwise map it */
-        mapping.put(textOffset, text);
-        strings.add(new Text(pointer, escapeString(string)));
-      }        
-    } 
+    String text = escapeString(rom.readNullTerminatedString(reference.pointer));
+    strings.add(new Text(reference, text));
   }
   
   public static void loadItems(Offset base, int count, int stride, int inBlockShift)
-  {
-    Offset[] itemNames = rom.readPointers(base, count, stride);
+  {    
+    /* names */
+    rom.readPointers(base, count, stride, (address, pointer) ->
+      add(new TextReference(address, pointer))
+    );
     
-    for (Offset io : itemNames)
-    {
-      String text = rom.readNullTerminatedString(io);
-      add(null, io, text);
-    }
-    
-    Offset[] itemDescs = rom.readPointers(base.shift(inBlockShift), count, stride);
-    
-    for (Offset io : itemDescs)
-    {
-      String text = rom.readNullTerminatedString(io);
-      add(null, io, text);
-    }
+    /* descriptions */
+    rom.readPointers(base.shift(inBlockShift), count, stride, (address, pointer) ->
+      add(new TextReference(address, pointer))
+    );
   }
   
   public static void loadScatteredBlocks()
@@ -133,9 +111,7 @@ public class App
         for (int j = 0; j < count; ++j)
         {
           long textOffset = rom.readU32(tableBase.shift(4 * j));
-
-          String text = rom.readNullTerminatedString(textBase.shift(textOffset));
-          add(tableBase.shift(4 * j), textBase.shift(textOffset), text);
+          add(new TextReference(tableBase.shift(4 * j), textBase.shift(textOffset)));
         }
       }
     }

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.BiConsumer;
 
 public class Rom
 {
@@ -56,6 +57,17 @@ public class Rom
       pointers[i] = readPointer(offset.shift(i * stride));
     
     return pointers;
+  }
+  
+  void readPointers(Offset offset, int count, int stride, BiConsumer<Offset, Offset> consumer)
+  {
+    for (int i = 0; i < count; ++i)
+    {
+      Offset address = offset.shift(i * stride);
+      Offset pointer = readPointer(address);
+      
+      consumer.accept(address, pointer);
+    }
   }
   
   String readNullTerminatedString(Offset offset)
